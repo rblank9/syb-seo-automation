@@ -94,8 +94,13 @@ def hello_http(request):
             )
 
     except Exception as e:
+        import traceback
         return (
-            json.dumps({"status": "error", "message": str(e)}),
+            json.dumps({
+                "status": "error",
+                "message": str(e),
+                "trace": traceback.format_exc(),
+            }),
             500,
             {"Content-Type": "application/json"},
         )
