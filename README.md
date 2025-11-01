@@ -18,6 +18,8 @@ What it does
 	•	mode=latest — returns the most recent keyword ownership snapshot
 	•	mode=trend — returns deltas versus the previous snapshot
 	•	mode=generate_actions — calls the stored procedure to insert new action items into keyword_actions
+	•	mode=actions_summary — summarizes keyword_actions counts by status and priority
+	•	mode=metrics — returns aggregate metrics including totals, open vs completed, and per-priority counts
 
 Quick start
 
@@ -31,6 +33,12 @@ curl -sS "https://syb-seo-automation-31032723003.europe-west1.run.app?mode=trend
 
 # Generate actions
 curl -sS "https://syb-seo-automation-31032723003.europe-west1.run.app?mode=generate_actions"
+
+# Actions summary
+curl -sS "https://syb-seo-automation-31032723003.europe-west1.run.app?mode=actions_summary"
+
+# Metrics
+curl -sS "https://syb-seo-automation-31032723003.europe-west1.run.app?mode=metrics"
 
 JSON response shape
 	•	mode=latest:
@@ -71,6 +79,43 @@ JSON response shape
 	•	mode=generate_actions:
 
 { "status": "ok", "message": "Actions generated" }
+
+	•	mode=actions_summary:
+{
+  "ok": true,
+  "summary": [
+    {
+      "status": "Open",
+      "priority": "High",
+      "actions": 3,
+      "first_created": "2025-11-01",
+      "last_created": "2025-11-01"
+    },
+    {
+      "status": "Open",
+      "priority": "Low",
+      "actions": 96,
+      "first_created": "2025-11-01",
+      "last_created": "2025-11-01"
+    }
+  ]
+}
+
+	•	mode=metrics:
+{
+  "ok": true,
+  "metrics": {
+    "total_actions": 99,
+    "completed": 0,
+    "open": 99,
+    "first_created": "2025-11-01",
+    "last_created": "2025-11-01",
+    "avg_per_priority": [
+      {"priority": "High", "count": 3},
+      {"priority": "Low", "count": 96}
+    ]
+  }
+}
 
 Repo layout
 
@@ -197,7 +242,7 @@ Scheduler (weekly digest)
 Cloud Scheduler → Create job:
 	•	Frequency: 0 13 * * MON
 	•	Target: HTTP
-	•	URL: https://syb-seo-automation-31032723003.europe-west1.run.app?mode=latest
+	•	URL: https://syb-seo-automation-31032723003.europe-west1.run.app?mode=actions_summary
 	•	Auth: OIDC
 	•	Service account: a scheduler SA with Cloud Run Invoker
 
