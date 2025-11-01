@@ -105,8 +105,10 @@ def hello_http(request):
         cause = getattr(e, "__cause__", None)
         if cause:
             error_details["cause"] = str(cause)
-        return (
-            json.dumps(error_details),
-            500,
-            {"Content-Type": "application/json"},
-        )
+# Flask entrypoint for Cloud Run buildpacks
+from flask import Flask, request
+app = Flask(__name__)
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    return hello_http(request)
