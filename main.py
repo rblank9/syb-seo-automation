@@ -4,34 +4,41 @@ import json
 
 PROJECT = "shield-your-body"
 DATASET = "gsc_export"
-FQN = f"`{PROJECT}.{DATASET}.keyword_ownership_summary`"
+TABLE = "keyword_ownership_summary"
+FQN = f"`{PROJECT}.{DATASET}.{TABLE}`"
+PROC_GENERATE = f"{PROJECT}.{DATASET}.generate_keyword_actions_from_candidates"
 
 @functions_framework.http
 def hello_http(request):
-    """
-    Cloud Run function to query BigQuery for SEO keyword ownership.
-    Modes:
-      - latest (default): show most recent snapshot
-      - trend: compare latest two snapshots
-    """
+    """Cloud Run entrypoint for SYB SEO automation."""
     try:
         req = request.get_json(silent=True) or {}
         mode = str(req.get("mode", "latest")).strip().lower()
         client = bigquery.Client(project=PROJECT)
 
         # -----------------------------------------------------------
-        # TREND MODE — compare latest vs previous snapshot
+        # MODE: GENERATE ACTIONS  →  run BigQuery procedure
+        # -----------------------------------------------------------
+        if mode == "generate_actions":
+            job = client.query(f"CALL `{PROC_GENERATE}`();")
+            job.result()
+            return (
+                json.dumps({"status": "ok", "message": "Actions generated"}),
+                200,
+                {"Content-Type": "application/json"},
+            )
+
+        # -----------------------------------------------------------
+        # MODE: TREND → latest vs previous snapshot
         # -----------------------------------------------------------
         if mode == "trend":
             sql = f"""
             WITH latest AS (
-              SELECT *
-              FROM {FQN}
+              SELECT * FROM {FQN}
               WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM {FQN})
             ),
             previous AS (
-              SELECT *
-              FROM {FQN}
+              SELECT * FROM {FQN}
               WHERE snapshot_date = (
                 SELECT MAX(snapshot_date)
                 FROM {FQN}
@@ -54,7 +61,7 @@ def hello_http(request):
             """
 
         # -----------------------------------------------------------
-        # LATEST MODE — show most recent snapshot only
+        # MODE: LATEST → most recent snapshot
         # -----------------------------------------------------------
         else:
             sql = f"""
@@ -71,24 +78,24 @@ def hello_http(request):
             LIMIT 50;
             """
 
-        # Run query
-        job = client.query(sql)
-        rows = [dict(r) for r in job.result()]
-
-        return (
-            json.dumps({
-                "status": "ok",
-                "mode": mode,
-                "row_count": len(rows),
-                "rows": rows
-            }),
-            200,
-            {"Content-Type": "application/json"}
-        )
+        # Execute query modes
+        if mode in ("latest", "trend"):
+            job = client.query(sql)
+            rows = [dict(r) for r in job.result()]
+            return (
+                json.dumps({
+                    "status": "ok",
+                    "mode": mode,
+                    "row_count": len(rows),
+                    "rows": rows,
+                }),
+                200,
+                {"Content-Type": "application/json"},
+            )
 
     except Exception as e:
         return (
             json.dumps({"status": "error", "message": str(e)}),
             500,
-            {"Content-Type": "application/json"}
+            {"Content-Type": "application/json"},
         )
