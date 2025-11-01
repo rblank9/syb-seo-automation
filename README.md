@@ -1,1 +1,1 @@
-<paste the full README.md content here>
+<paste the full README.md text here>
